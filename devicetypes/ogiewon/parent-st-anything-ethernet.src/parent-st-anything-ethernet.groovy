@@ -27,7 +27,14 @@
  *    2017-10-07  Dan Ogorchock  Cleaned up formatting for readability
  *    2017-09-24  Allan (vseven) Added RGBW LED strip support with a setColorRGBW routine
  *    2017-12-29  Dan Ogorchock  Added WiFi RSSI value per request from ST user @stevesell
- *
+ *    2018-02-15  Dan Ogorchock  Added @saif76's Ultrasonic Sensor
+ *    2018-02-25  Dan Ogorchock  Added Child Presence Sensor
+ *    2018-03-03  Dan Ogorchock  Added Child Power Meter
+ *    2018-06-05  Dan Ogorchock  Simplified Parent & Child Device Handlers
+ *    2018-06-24  Dan Ogorchock  Added Child Servo
+ *    2018-07-01  Dan Ogorchock  Added Pressure Measurement
+ *    2018-08-06  Dan Ogorchock  Added MAC Address formatting before setting deviceNetworkID
+ *	
  */
  
 metadata {
@@ -36,7 +43,9 @@ metadata {
         capability "Refresh"
         capability "Button"
         capability "Holdable Button"
-        capability "Signal Strength"   
+        capability "Signal Strength"
+        
+        command "sendData", ["string"]
 	}
 
     simulator {
@@ -67,12 +76,10 @@ metadata {
         valueTile("rssi", "device.rssi", width: 2, height: 2) {
 			state("rssi", label:'RSSI ${currentValue}', unit:"",
 				backgroundColors:[
-					[value: -30, color: "#00cc00"],
-					[value: -45, color: "#33cc33"],
-					[value: -60, color: "#66ff33"],
-					[value: -70, color: "#99ff33"],
-					[value: -80, color: "#ffcc00"],
-					[value: -85, color: "#ff9900"],
+					[value: -30, color: "#006600"],
+					[value: -45, color: "#009900"],
+					[value: -60, color: "#99cc00"],
+					[value: -70, color: "#ff9900"],
 					[value: -90, color: "#ff0000"]
 				]
 			)
@@ -165,21 +172,8 @@ def parse(String description) {
             
             if (childDevice != null) {
                 //log.debug "parse() found child device ${childDevice.deviceNetworkId}"
-                
-//                if (namebase == "temperature") {
-//                	double tempC = fahrenheitToCelsius(value.toFloat())  //convert from Farenheit to Celsius
-//                   	value = tempC.round(2)
-//				}
-                
-//                if (namebase == "dimmerSwitch") { namebase = "switch"}  //use a "switch" attribute to maintain standards
-//                childDevice.sendEvent(name: namebase, value: value)
-                childDevice.generateEvent(namebase, value)
+                childDevice.parse("${namebase} ${value}")
 				log.debug "${childDevice.deviceNetworkId} - name: ${namebase}, value: ${value}"
-                //If event was dor a "Door Control" device, also update the child door control device's "Contact Sensor" to keep everything in synch
-//                if (namebase == "doorControl") {
-//                	childDevice.sendEvent(name: "contact", value: value)
-//                    log.debug "${childDevice.deviceNetworkId} - name: contact, value: ${value}"
-//                }
             }
             else  //must not be a child, perform normal update
             {
@@ -203,6 +197,10 @@ private getHostAddress() {
     return ip + ":" + port
 }
 
+def sendData(message) {
+    sendEthernet(message) 
+}
+
 def sendEthernet(message) {
 	log.debug "Executing 'sendEthernet' ${message}"
 	if (settings.ip != null && settings.port != null) {
@@ -219,101 +217,6 @@ def sendEthernet(message) {
 }
 
 // handle commands
-def childAlarmOn(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmOn($dni), name = ${name}"
-    sendEthernet("${name} both")
-}
-
-def childAlarmSiren(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmOn($dni), name = ${name}"
-    sendEthernet("${name} siren")
-}
-
-def childAlarmStrobe(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmOn($dni), name = ${name}"
-    sendEthernet("${name} strobe")
-}
-
-def childAlarmBoth(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmOn($dni), name = ${name}"
-    sendEthernet("${name} both")
-}
-
-def childAlarmOff(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmOff($dni), name = ${name}"
-    sendEthernet("${name} off")
-}
-
-def childAlarmTest(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childAlarmTest($dni), name = ${name}"
-    sendEthernet("${name} both")
-	runIn(3, childAlarmTestOff, [data: [devicenetworkid: dni]])
-}
-
-def childAlarmTestOff(data) {
-	childAlarmOff(data.devicenetworkid)
-}
-
-void childDoorOpen(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childDoorOpen($dni), name = ${name}"
-    sendEthernet("${name} on")
-}
-
-void childDoorClose(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childDoorClose($dni), name = ${name}"
-    sendEthernet("${name} on")
-}
-
-void childOn(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childOn($dni), name = ${name}"
-    sendEthernet("${name} on")
-}
-
-void childOff(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childOff($dni), name = ${name}"
-    sendEthernet("${name} off")
-}
-
-void childSetLevel(String dni, value) {
-    def name = dni.split("-")[-1]
-    log.debug "childSetLevel($dni), name = ${name}, level = ${value}"
-    sendEthernet("${name} ${value}")
-}
-
-void childSetColorRGB(String dni, value) {
-    def name = dni.split("-")[-1]
-    log.debug "childSetColorRGB($dni), name = ${name}, colorRGB = ${value}"
-    sendEthernet("${name} ${value}")
-}
-
-void childSetColorRGBW(String dni, value) {
-    def name = dni.split("-")[-1]
-    log.debug "childSetColorRGBW($dni), name = ${name}, colorRGBW = ${value}"
-    sendEthernet("${name} ${value}")
-}
-
-void childRelayOn(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childRelayOn($dni), name = ${name}"
-    sendEthernet("${name} on")
-}
-
-void childRelayOff(String dni) {
-    def name = dni.split("-")[-1]
-    log.debug "childRelayOff($dni), name = ${name}"
-    sendEthernet("${name} off")
-}
-
 def configure() {
 	log.debug "Executing 'configure()'"
     updateDeviceNetworkID()
@@ -342,6 +245,7 @@ def initialize() {
 	log.debug "Executing 'initialize()'"
     sendEvent(name: "numberOfButtons", value: numButtons)
 }
+
 def updated() {
 	if (!state.updatedLastRanAt || now() >= state.updatedLastRanAt + 5000) {
 		state.updatedLastRanAt = now()
@@ -356,12 +260,13 @@ def updated() {
 	}
 }
 
-
 def updateDeviceNetworkID() {
 	log.debug "Executing 'updateDeviceNetworkID'"
-    if(device.deviceNetworkId!=mac) {
-    	log.debug "setting deviceNetworkID = ${mac}"
-        device.setDeviceNetworkId("${mac}")
+    def formattedMac = mac.toUpperCase()
+    formattedMac = formattedMac.replaceAll(":", "")
+    if(device.deviceNetworkId!=formattedMac) {
+        log.debug "setting deviceNetworkID = ${formattedMac}"
+        device.setDeviceNetworkId("${formattedMac}")
 	}
     //Need deviceNetworkID updated BEFORE we can create Child Devices
 	//Have the Arduino send an updated value for every device attached.  This will auto-created child devices!
@@ -429,6 +334,21 @@ private void createChildDevice(String deviceName, String deviceNumber) {
                 	break    
          		case "doorControl": 
                 		deviceHandlerName = "Child Door Control" 
+                	break
+         		case "ultrasonic": 
+                		deviceHandlerName = "Child Ultrasonic Sensor" 
+                	break
+         		case "presence": 
+                		deviceHandlerName = "Child Presence Sensor" 
+                	break
+         		case "power": 
+                		deviceHandlerName = "Child Power Meter" 
+                	break
+         		case "servo": 
+                		deviceHandlerName = "Child Servo" 
+                	break
+         		case "pressure": 
+                		deviceHandlerName = "Child Pressure Measurement" 
                 	break
 			default: 
                 		log.error "No Child Device Handler case for ${deviceName}"
